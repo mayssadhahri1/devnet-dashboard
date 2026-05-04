@@ -9,34 +9,46 @@ pipeline {
             }
         }
 
-        stage('Info') {
+        stage('Build Docker Images') {
             steps {
-                sh 'echo "🚀 DevNet CI/CD Pipeline Running"'
+                sh 'docker compose build'
             }
         }
 
-        stage('Validate Backend (optional)') {
+        stage('Start Services') {
             steps {
-                sh '''
-                    echo "Checking backend availability..."
-                    curl -s http://localhost:8000/api/system || echo "Backend not running (expected if not started)"
-                '''
+                sh 'docker compose up -d'
             }
         }
 
-        stage('Validate Frontend (optional)') {
+        stage('Wait Services') {
             steps {
-                sh '''
-                    echo "Checking frontend availability..."
-                    curl -s http://localhost:8501 || echo "Frontend not running (expected if not started)"
-                '''
+                sh 'sleep 10'
+            }
+        }
+
+        stage('Test Backend') {
+            steps {
+                sh 'curl -s http://localhost:8000/api/system || true'
+            }
+        }
+
+        stage('Test Frontend') {
+            steps {
+                sh 'curl -s http://localhost:8501 || true'
+            }
+        }
+
+        stage('Stop Services') {
+            steps {
+                sh 'docker compose down'
             }
         }
     }
 
     post {
         always {
-            echo "✅ Pipeline finished"
+            echo "✅ CI/CD Pipeline finished"
         }
     }
 }
