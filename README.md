@@ -40,6 +40,16 @@ Frontend (Streamlit) → Backend (FastAPI) → System APIs + External APIs
 ```bash
 docker compose up --build
 
+devnet-dashboard/
+│
+├── backend/              # API FastAPI
+├── frontend/             # Dashboard Streamlit
+├── docker/               # Dockerfiles
+├── docker-compose.yml    # Orchestration
+├── Jenkinsfile (option)  # CI/CD alternatif
+├── .github/workflows/    # GitHub Actions CI/CD
+└── README.md
+
 
 
 

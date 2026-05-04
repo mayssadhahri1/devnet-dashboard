@@ -12,8 +12,9 @@ st.set_page_config(
 )
 
 BACKEND_URL = "http://backend:8000"
+
 # =========================
-# 🎨 STYLE GLOBAL
+# 🎨 STYLE MODERNE
 # =========================
 st.markdown("""
     <style>
@@ -21,84 +22,88 @@ st.markdown("""
             background-color: #0e1117;
             color: white;
         }
+
         h1, h2, h3 {
             color: #00ffcc;
         }
-        .metric-box {
+
+        .card {
+            background: linear-gradient(145deg, #1c1f26, #14171c);
+            padding: 18px;
+            border-radius: 15px;
+            box-shadow: 0px 0px 12px rgba(0,255,204,0.15);
+        }
+
+        .stMetric {
             background-color: #1c1f26;
-            padding: 15px;
             border-radius: 12px;
-            text-align: center;
-            box-shadow: 0px 0px 10px rgba(0,255,204,0.2);
+            padding: 10px;
         }
     </style>
 """, unsafe_allow_html=True)
 
 # =========================
-# 🚀 TITRE
+# 🚀 TITLE
 # =========================
 st.title("🧠 DevNet Intelligent Monitoring System")
-st.caption("Real-time System + API Monitoring | DevOps Project")
+st.caption("Real-time System + Multi-City Weather | DevOps Project")
 
-# =========================
-# 🔄 LIVE DASHBOARD
-# =========================
 placeholder = st.empty()
 
+# =========================
+# 🔄 LIVE LOOP
+# =========================
 while True:
     try:
         system = requests.get(f"{BACKEND_URL}/api/system").json()
-        weather = requests.get(f"{BACKEND_URL}/api/weather").json()
+
+        weather_sousse = requests.get(f"{BACKEND_URL}/api/weather/sousse").json()
+        weather_kairouan = requests.get(f"{BACKEND_URL}/api/weather/kairouan").json()
 
         with placeholder.container():
 
             # =========================
-            # 📊 SYSTEM METRICS
+            # 📊 SYSTEM
             # =========================
-            st.subheader("📊 System Performance")
+            st.subheader("📊 System Monitoring")
 
             col1, col2, col3 = st.columns(3)
 
-            with col1:
-                st.metric("CPU Usage (%)", system["cpu_percent"])
-
-            with col2:
-                st.metric("RAM Usage (%)", system["ram"]["percent"])
-
-            with col3:
-                st.metric("Disk Usage (%)", system["disk"]["percent"])
+            col1.metric("CPU (%)", system["cpu_percent"])
+            col2.metric("RAM (%)", system["ram"]["percent"])
+            col3.metric("Disk (%)", system["disk"]["percent"])
 
             st.divider()
 
             # =========================
-            # 🌤️ WEATHER SECTION
+            # 🌤️ WEATHER
             # =========================
-            st.subheader("🌤️ Weather Monitoring (Tunisia)")
+            st.subheader("🌤️ Weather Monitoring - Tunisia")
 
-            w = weather.get("current_weather", {})
+            col4, col5 = st.columns(2)
 
-            col4, col5, col6 = st.columns(3)
-
+            # 🌤️ SOUSSE
             with col4:
-                st.metric("Temperature (°C)", w.get("temperature", "N/A"))
-
-            with col5:
+                st.markdown("### 🌊 Sousse")
+                w = weather_sousse.get("current_weather", {})
+                st.metric("Temp (°C)", w.get("temperature", "N/A"))
                 st.metric("Wind Speed", w.get("windspeed", "N/A"))
 
-            with col6:
-                st.metric("Wind Direction", w.get("winddirection", "N/A"))
+            # 🌤️ KAIROUAN
+            with col5:
+                st.markdown("### 🕌 Kairouan")
+                w2 = weather_kairouan.get("current_weather", {})
+                st.metric("Temp (°C)", w2.get("temperature", "N/A"))
+                st.metric("Wind Speed", w2.get("windspeed", "N/A"))
 
             st.divider()
 
-            # =========================
-            # 🧠 INFO PANEL
-            # =========================
             st.info("🔄 Auto-refresh every 3 seconds | DevNet Dashboard Running")
 
         time.sleep(3)
         st.rerun()
 
     except Exception as e:
-        st.error("❌ Backend not reachable. Please start FastAPI server.")
+        st.error("❌ Backend not reachable")
         st.code(str(e))
         break
