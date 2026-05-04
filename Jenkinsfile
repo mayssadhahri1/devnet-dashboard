@@ -11,20 +11,32 @@ pipeline {
 
         stage('Info') {
             steps {
-                sh 'echo DevNet CI/CD Running'
+                sh 'echo "🚀 DevNet CI/CD Pipeline Running"'
             }
         }
 
-        stage('Test Backend') {
+        stage('Validate Backend (optional)') {
             steps {
-                sh 'curl http://localhost:8000/api/system || true'
+                sh '''
+                    echo "Checking backend availability..."
+                    curl -s http://localhost:8000/api/system || echo "Backend not running (expected if not started)"
+                '''
             }
         }
 
-        stage('Test Frontend') {
+        stage('Validate Frontend (optional)') {
             steps {
-                sh 'curl http://localhost:8501 || true'
+                sh '''
+                    echo "Checking frontend availability..."
+                    curl -s http://localhost:8501 || echo "Frontend not running (expected if not started)"
+                '''
             }
+        }
+    }
+
+    post {
+        always {
+            echo "✅ Pipeline finished"
         }
     }
 }
