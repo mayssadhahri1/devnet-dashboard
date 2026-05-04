@@ -23,14 +23,12 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500;700;800&display=swap');
     
-    /* Fond global : Dégradé bleu nuit très profond, pas noir pur */
     .stApp {
         background: radial-gradient(circle at top, #1a202c 0%, #0f172a 100%);
         color: #e2e8f0;
         font-family: 'JetBrains Mono', monospace;
     }
 
-    /* Style des titres de section avec effet lumineux */
     .section-label {
         color: #94a3b8;
         font-size: 12px;
@@ -43,7 +41,6 @@ st.markdown("""
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    /* Style du Header */
     .header-main { 
         font-size: 26px; 
         font-weight: 800; 
@@ -69,7 +66,6 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
     }
 
-    /* Cartes Météo (Style Verre / 3D Premium) */
     .weather-card {
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
         backdrop-filter: blur(10px);
@@ -91,7 +87,6 @@ st.markdown("""
     .card-temp { font-size: 36px; font-weight: 800; margin: 10px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.3);}
     .card-detail { color: #94a3b8; font-size: 11px; margin: 2px 0; font-weight: 500;}
 
-    /* Conteneurs (Tableau etc) */
     .glass-container {
         background: rgba(30, 41, 59, 0.4);
         border: 1px solid rgba(255, 255, 255, 0.05);
@@ -100,7 +95,6 @@ st.markdown("""
         box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
     }
 
-    /* Boutons stylisés */
     .stButton>button {
         background: linear-gradient(135deg, #1e293b, #0f172a);
         color: #e2e8f0;
@@ -122,7 +116,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================
-# 3. 📟 HEADER SECTION (Dynamique)
+# 3. 💾 DATA FETCHING & CACHING
+# =========================
+@st.cache_data(ttl=60) # Cache les métriques pendant 60s pour éviter de spammer l'API
+def fetch_system_metrics():
+    try:
+        return requests.get(f"{BACKEND}/api/system", timeout=2).json()
+    except requests.exceptions.RequestException:
+        return None
+
+@st.cache_data(ttl=300) # Cache la liste des villes pendant 5 minutes
+def fetch_cities_data():
+    try:
+        data = requests.get(f"{BACKEND}/api/cities", timeout=3).json()
+        # Extraction propre des coordonnées pour pouvoir les utiliser sur une carte
+        return pd.DataFrame([{
+            "City": k.capitalize(), 
+            "Country": v["country"], 
+            "lat": float(v.get('lat', 0)), 
+            "lon": float(v.get('lon', 0))
+        } for k, v in data.items()])
+    except requests.exceptions.RequestException:
+        return pd.DataFrame()
+
+# =========================
+# 4. 📟 HEADER SECTION 
 # =========================
 col1, col2 = st.columns([4, 1])
 with col1:
@@ -134,44 +152,35 @@ try:
     backend_online = True
     with col2:
         st.markdown('<div style="text-align:right"><span class="status-online">● SYSTEM ONLINE</span></div>', unsafe_allow_html=True)
-except:
+except requests.exceptions.RequestException:
     with col2:
         st.markdown('<div style="text-align:right"><span class="status-offline">● SYSTEM OFFLINE</span></div>', unsafe_allow_html=True)
 
-st.write("")
-
 # =========================
-# 4. 🖥️ SYSTEM METRICS (Dynamique)
+# 5. 🖥️ SYSTEM METRICS 
 # =========================
 st.markdown('<div class="section-label">System Performance</div>', unsafe_allow_html=True)
 
 if backend_online:
-    try:
-        sys = requests.get(f"{BACKEND}/api/system").json()
+    sys = fetch_system_metrics()
+    if sys:
         g1, g2, g3, g4 = st.columns(4)
-        
         metrics_config = [
-            {"val": sys.get('cpu', 0), "label": "CPU LOAD", "color": "#00f2ff"}, # Cyan Neon
-            {"val": sys.get('ram', 0), "label": "RAM USAGE", "color": "#f43f5e"}, # Rose/Rouge néon
-            {"val": sys.get('disk', 0), "label": "DISK SPACE", "color": "#fbbf24"}, # Jaune/Or
-            {"val": sys.get('net', 0), "label": "NET TRAFFIC", "color": "#a855f7"} # Violet néon
+            {"val": sys.get('cpu', 0), "label": "CPU LOAD", "color": "#00f2ff"},
+            {"val": sys.get('ram', 0), "label": "RAM USAGE", "color": "#f43f5e"},
+            {"val": sys.get('disk', 0), "label": "DISK SPACE", "color": "#fbbf24"},
+            {"val": sys.get('net', 0), "label": "NET TRAFFIC", "color": "#a855f7"}
         ]
         
         def create_dial_gauge(value, label, color):
             fig = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = value,
-                domain = {'x': [0, 1], 'y': [0, 1]},
+                mode = "gauge+number", value = value, domain = {'x': [0, 1], 'y': [0, 1]},
                 number = {'font': {'color': '#f8fafc', 'size': 28, 'family': 'JetBrains Mono', 'weight': 'bold'}, 'suffix': "%"},
                 gauge = {
                     'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#334155", 'tickvals': [0, 50, 100]},
                     'bar': {'color': color, 'thickness': 0.85},
-                    'bgcolor': "rgba(0,0,0,0)", 
-                    'borderwidth': 0,
-                    'steps': [
-                        {'range': [0, 100], 'color': 'rgba(255,255,255,0.03)'},
-                        {'range': [85, 100], 'color': 'rgba(244, 63, 94, 0.15)'} 
-                    ],
+                    'bgcolor': "rgba(0,0,0,0)", 'borderwidth': 0,
+                    'steps': [{'range': [0, 100], 'color': 'rgba(255,255,255,0.03)'}, {'range': [85, 100], 'color': 'rgba(244, 63, 94, 0.15)'}],
                 }
             ))
             fig.update_layout(
@@ -185,53 +194,64 @@ if backend_online:
         with g2: st.plotly_chart(create_dial_gauge(metrics_config[1]['val'], metrics_config[1]['label'], metrics_config[1]['color']), use_container_width=True, config={'displayModeBar': False})
         with g3: st.plotly_chart(create_dial_gauge(metrics_config[2]['val'], metrics_config[2]['label'], metrics_config[2]['color']), use_container_width=True, config={'displayModeBar': False})
         with g4: st.plotly_chart(create_dial_gauge(metrics_config[3]['val'], metrics_config[3]['label'], metrics_config[3]['color']), use_container_width=True, config={'displayModeBar': False})
-    except Exception as e:
-        st.error(f"Erreur de lecture des métriques : {e}")
+    else:
+        st.error("Erreur : Impossible de lire les métriques système.")
 else:
     st.error("⚠️ Backend Offline. Lancez le serveur FastAPI.")
 
-st.write("")
-
 # =========================
-# 5. 🌍 CITY REGISTRY & DISTRIBUTION
+# 6. 🌍 GLOBAL NODE MAP & REGISTRY
 # =========================
-st.markdown('<div class="section-label">Node Registry & Network</div>', unsafe_allow_html=True)
-col_left, col_right = st.columns([2.5, 1])
+st.markdown('<div class="section-label">Global Node Geography</div>', unsafe_allow_html=True)
 
 f_df = pd.DataFrame()
 dynamic_temperatures = {} 
 
 if backend_online:
-    with col_left:
-        st.markdown('<div class="glass-container">', unsafe_allow_html=True)
-        data = requests.get(f"{BACKEND}/api/cities").json()
-        df_main = pd.DataFrame([{"City": k.capitalize(), "Country": v["country"], "Coords": f"{v.get('lat', '0')}, {v.get('lon', '0')}"} for k, v in data.items()])
-        
-        f1, f2 = st.columns([1.5, 1])
-        search = f1.text_input("Search...", label_visibility="collapsed", placeholder="🔍 Search city...")
-        country_opts = ["All countries"] + sorted(df_main["Country"].unique().tolist())
-        c_filter = f2.selectbox("All Countries", country_opts, label_visibility="collapsed")
-        
-        f_df = df_main.copy()
-        if search: f_df = f_df[f_df["City"].str.contains(search, case=False)]
-        if c_filter != "All countries": f_df = f_df[f_df["Country"] == c_filter]
-        
-        st.dataframe(f_df, use_container_width=True, hide_index=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    df_main = fetch_cities_data()
+    
+    if not df_main.empty:
+        # NOUVEAU : Carte interactive du monde
+        map_fig = px.scatter_mapbox(
+            df_main, lat="lat", lon="lon", hover_name="City", hover_data=["Country"],
+            color_discrete_sequence=["#00f2ff"], zoom=1.5, height=400
+        )
+        map_fig.update_layout(
+            mapbox_style="carto-darkmatter", # Thème sombre pour correspondre au design
+            margin={"r":0,"t":0,"l":0,"b":0},
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+        )
+        st.plotly_chart(map_fig, use_container_width=True)
 
-    with col_right:
-        st.markdown('<div class="glass-container" style="height: 100%;">', unsafe_allow_html=True)
-        st.markdown('<div style="color:#94a3b8; font-size:12px; font-weight:bold; margin-bottom:10px;">NODE DISTRIBUTION</div>', unsafe_allow_html=True)
-        counts = f_df["Country"].value_counts()
-        for country, val in counts.items():
-            st.markdown(f'<div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;"><span>{country}</span><span style="color:#00f2ff; font-weight:bold;">{val}</span></div>', unsafe_allow_html=True)
-            st.progress(min(val/10, 1.0))
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Node Registry & Distribution</div>', unsafe_allow_html=True)
+        col_left, col_right = st.columns([2.5, 1])
 
-st.write("")
+        with col_left:
+            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
+            f1, f2 = st.columns([1.5, 1])
+            search = f1.text_input("Search...", label_visibility="collapsed", placeholder="🔍 Search city...")
+            country_opts = ["All countries"] + sorted(df_main["Country"].unique().tolist())
+            c_filter = f2.selectbox("All Countries", country_opts, label_visibility="collapsed")
+            
+            f_df = df_main.copy()
+            if search: f_df = f_df[f_df["City"].str.contains(search, case=False)]
+            if c_filter != "All countries": f_df = f_df[f_df["Country"] == c_filter]
+            
+            # On masque lat/lon dans le tableau pour la propreté
+            st.dataframe(f_df[["City", "Country"]], use_container_width=True, hide_index=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with col_right:
+            st.markdown('<div class="glass-container" style="height: 100%;">', unsafe_allow_html=True)
+            st.markdown('<div style="color:#94a3b8; font-size:12px; font-weight:bold; margin-bottom:10px;">NODE DISTRIBUTION</div>', unsafe_allow_html=True)
+            counts = f_df["Country"].value_counts()
+            for country, val in counts.items():
+                st.markdown(f'<div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;"><span>{country}</span><span style="color:#00f2ff; font-weight:bold;">{val}</span></div>', unsafe_allow_html=True)
+                st.progress(min(val/10, 1.0))
+            st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
-# 6. 🌤️ LIVE WEATHER DASHBOARD (Grid Premium)
+# 7. 🌤️ LIVE WEATHER DASHBOARD
 # =========================
 st.markdown('<div class="section-label">Live Environment Telemetry</div>', unsafe_allow_html=True)
 
@@ -245,13 +265,12 @@ if not f_df.empty:
     for i, (_, row) in enumerate(weather_df.iterrows()):
         city_slug = row['City'].lower().replace(" ", "")
         try:
-            w_res = requests.get(f"{BACKEND}/api/weather/{city_slug}").json()
+            w_res = requests.get(f"{BACKEND}/api/weather/{city_slug}", timeout=2).json()
             w_data = w_res.get("weather", {})
             temp = w_data.get('temperature', '--')
             
             if temp != '--': dynamic_temperatures[row['City']] = float(temp)
             
-            # Dégradé de couleur pour la température (froid = cyan, chaud = or/orange)
             t_color = "#fbbf24" if temp != '--' and float(temp) > 25 else "#00f2ff"
             
             with w_cols[i % 4]:
@@ -264,12 +283,11 @@ if not f_df.empty:
                     <p class="card-detail">🧭 Direction: <span style="color:#e2e8f0">{w_data.get('winddirection', '--')}°</span></p>
                 </div>
                 """, unsafe_allow_html=True)
-        except: continue
-
-st.write("")
+        except requests.exceptions.RequestException: 
+            continue
 
 # =========================
-# 7. 📊 ANALYTICS & REPORTS 
+# 8. 📊 ANALYTICS & REPORTS 
 # =========================
 st.markdown('<div class="section-label">Global Analytics</div>', unsafe_allow_html=True)
 a1, a2 = st.columns(2)
@@ -317,7 +335,7 @@ if not f_df.empty:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
-# 8. 🔗 QUICK ACCESS & FOOTER
+# 9. 🔗 QUICK ACCESS & FOOTER
 # =========================
 st.markdown('<div class="section-label">System Controls</div>', unsafe_allow_html=True)
 b1, b2, b3 = st.columns([1.5, 1, 1])
@@ -327,4 +345,4 @@ if b2.button("🔄 Sync Live Data"):
 b3.button("⚙️ System Settings")
 
 st.write("---")
-st.markdown('<div style="text-align:center; color:#64748b; font-size:11px; margin-top:20px;">🚀 DevNet Global Command Center v3.0 | FastAPI + Streamlit | Premium Edition</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#64748b; font-size:11px; margin-top:20px;">🚀 DevNet Global Command Center v3.1 | FastAPI + Streamlit | Premium Edition</div>', unsafe_allow_html=True)
