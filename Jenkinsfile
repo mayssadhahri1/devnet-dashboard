@@ -3,25 +3,13 @@ pipeline {
 
     stages {
 
-        stage('Clean Workspace') {
+        stage('Info') {
             steps {
-                deleteDir()
+                sh 'echo 🚀 DevNet CI/CD Running'
             }
         }
 
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Check Docker') {
-            steps {
-                sh 'docker --version'
-            }
-        }
-
-        stage('Build Docker Images') {
+        stage('Build Docker') {
             steps {
                 sh 'docker compose build'
             }
@@ -33,7 +21,7 @@ pipeline {
             }
         }
 
-        stage('Wait Services') {
+        stage('Wait') {
             steps {
                 sh 'sleep 15'
             }
@@ -41,17 +29,17 @@ pipeline {
 
         stage('Test Backend') {
             steps {
-                sh 'curl -s http://localhost:8000/api/system || echo "Backend not responding"'
+                sh 'curl -s http://localhost:8000/api/system || echo "Backend down"'
             }
         }
 
         stage('Test Frontend') {
             steps {
-                sh 'curl -s http://localhost:8501 || echo "Frontend not responding"'
+                sh 'curl -s http://localhost:8501 || echo "Frontend down"'
             }
         }
 
-        stage('Stop Services') {
+        stage('Stop') {
             steps {
                 sh 'docker compose down'
             }
@@ -60,7 +48,7 @@ pipeline {
 
     post {
         always {
-            echo "✅ CI/CD Pipeline finished"
+            echo "✅ Pipeline finished"
         }
     }
 }
