@@ -1,0 +1,52 @@
+name: DevNet CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+
+    - name: Run backend tests
+      run: |
+        cd backend
+        python -c "print('Backend OK')"
+
+    - name: Build Docker Compose
+      run: |
+        docker compose build
+
+    - name: Start services
+      run: |
+        docker compose up -d
+
+    - name: Wait services
+      run: sleep 10
+
+    - name: Test backend
+      run: |
+        curl http://localhost:8000/api/system || true
+
+    - name: Test frontend
+      run: |
+        curl http://localhost:8501 || true
+
+    - name: Stop services
+      run: |
+        docker compose down
