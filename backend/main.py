@@ -1,43 +1,92 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 import psutil
 import requests
 
-app = FastAPI(title="DevNet Monitoring System")
+app = FastAPI(title="DevNet Global Monitoring System")
+
+# =========================
+# 🌍 FULL WORLD CITIES
+# =========================
+CITIES = {
+    # 🇹🇳 Tunisia
+    "tunis": {"lat": 36.8065, "lon": 10.1815, "country": "Tunisia"},
+    "sousse": {"lat": 35.8256, "lon": 10.63699, "country": "Tunisia"},
+    "sfax": {"lat": 34.7406, "lon": 10.7603, "country": "Tunisia"},
+    "kairouan": {"lat": 35.6781, "lon": 10.0963, "country": "Tunisia"},
+    "monastir": {"lat": 35.7643, "lon": 10.8113, "country": "Tunisia"},
+
+    # 🇫🇷 France
+    "paris": {"lat": 48.8566, "lon": 2.3522, "country": "France"},
+    "lyon": {"lat": 45.7640, "lon": 4.8357, "country": "France"},
+
+    # 🇬🇧 UK
+    "london": {"lat": 51.5072, "lon": -0.1276, "country": "UK"},
+
+    # 🇺🇸 USA
+    "newyork": {"lat": 40.7128, "lon": -74.0060, "country": "USA"},
+    "losangeles": {"lat": 34.0522, "lon": -118.2437, "country": "USA"},
+
+    # 🇦🇪 UAE
+    "dubai": {"lat": 25.2048, "lon": 55.2708, "country": "UAE"},
+}
 
 # =========================
 # 🌤️ WEATHER FUNCTION
 # =========================
-def get_weather(lat, lon):
+def fetch_weather(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-    try:
-        return requests.get(url).json()
-    except:
-        return {"error": "weather api failed"}
+    return requests.get(url).json()
 
 # =========================
-# 🖥️ SYSTEM
+# 🖥️ SYSTEM METRICS
 # =========================
 @app.get("/api/system")
-def system_info():
+def system():
     return {
-        "cpu_percent": psutil.cpu_percent(interval=1),
-        "ram": psutil.virtual_memory()._asdict(),
-        "disk": psutil.disk_usage("/")._asdict()
+        "cpu": psutil.cpu_percent(),
+        "ram": psutil.virtual_memory().percent,
+        "disk": psutil.disk_usage("/").percent
     }
 
 # =========================
-# 🌊 SOUSSE
+# 🌤️ WEATHER BY CITY (FIXED)
 # =========================
-@app.get("/api/weather/sousse")
-def weather_sousse():
-    return get_weather(35.8256, 10.6411)
+@app.get("/api/weather/{city}")
+def weather(city: str):
+    city = city.lower()
+
+    if city not in CITIES:
+        return {
+            "error": "City not found",
+            "available": list(CITIES.keys())
+        }
+
+    coords = CITIES[city]
+    data = fetch_weather(coords["lat"], coords["lon"])
+
+    return {
+        "city": city,
+        "country": coords["country"],
+        "weather": data.get("current_weather", {})
+    }
 
 # =========================
-# 🕌 KAIROUAN
+# 🌍 LIST CITIES (FILTER + SEARCH)
 # =========================
-@app.get("/api/weather/kairouan")
-def weather_kairouan():
-    return get_weather(35.6781, 10.0963)
+@app.get("/api/cities")
+def cities(
+    country: str = Query(None),
+    search: str = Query(None)
+):
+    result = CITIES
+
+    if country:
+        result = {k:v for k,v in result.items() if v["country"].lower() == country.lower()}
+
+    if search:
+        result = {k:v for k,v in result.items() if search.lower() in k.lower()}
+
+    return result
 
 # =========================
 # ❤️ HEALTH

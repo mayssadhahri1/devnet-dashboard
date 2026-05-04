@@ -55,12 +55,12 @@ devnet-dashboard/
 
 ## 🗣️ Présentation simple :
 
-> “Ce projet est un système de monitoring intelligent développé avec une architecture microservices.”
+“Ce projet est un système de monitoring intelligent basé sur une architecture microservices.”
 
-> “Le backend FastAPI collecte les données système comme CPU, RAM et disque.”
+“Le backend FastAPI collecte les données système comme CPU, RAM et disque ainsi que la météo via une API externe.”
 
-> “Le frontend Streamlit affiche ces données en temps réel sous forme de dashboard.”
+“Le frontend Streamlit affiche ces données sous forme de dashboard interactif avec recherche, filtrage et pagination.”
 
-> “Le système est containerisé avec Docker pour assurer portabilité et déploiement rapide.”
+“L’application est conteneurisée avec Docker pour garantir portabilité et déploiement rapide.”
 
-> “Une API externe météo est intégrée pour simuler un système DevOps réel connecté.”
+“Une pipeline CI/CD est intégrée pour automatiser le déploiement
