@@ -167,7 +167,7 @@ except requests.exceptions.RequestException:
 
 #  MÉTRIQUES SYSTÈME
 
-st.markdown('<div class="section-label">System Performance</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label">my system performance</div>', unsafe_allow_html=True)
 
 if backend_online:
     sys = fetch_system_metrics()
