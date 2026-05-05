@@ -64,3 +64,5 @@ devnet-dashboard/
 “L’application est conteneurisée avec Docker pour garantir portabilité et déploiement rapide.”
 
 “Une pipeline CI/CD est intégrée pour automatiser le déploiement
+
+Design Premium "Glassmorphism"
